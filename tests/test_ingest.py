@@ -138,7 +138,7 @@ check("stat negative", clean_stat("-0.25"), -0.25)
 print("\n== Integration: real uploaded moneyball export ==")
 from fm_advisor.ingestion import merge_squads
 
-REAL_EXPORT = Path(__file__).parent.parent / "data" / "cache" / "moneyball_export_20260718_014443.csv"
+REAL_EXPORT = Path(__file__).parent.parent / "data" / "cache" / "moneyball_export_20260811_093025.csv"
 perf_res = load_squad(REAL_EXPORT)
 print(f"  encoding: {perf_res.encoding}  players: {len(perf_res)}")
 check("all 67 columns accounted for (no unmapped left as raw strings)",
