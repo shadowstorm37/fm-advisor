@@ -40,7 +40,7 @@ def build_squad_report(
     reference: Optional[date] = None,
 ) -> dict:
     """
-    Build the combined Phase 2 report: squad depth by role plus contract
+    Build the combined Phase 2 report: squad depth by position plus contract
     urgency flags for starting-caliber players. Returns a plain dict of
     JSON-safe primitives (dates become ISO strings) ready for
     `json.dumps()` or the FastAPI layer.
@@ -50,10 +50,9 @@ def build_squad_report(
     )
     contract_result = audit_contracts(
         players,
-        roles=roles,
-        quality_threshold=quality_threshold,
         warning_months=warning_months,
         reference=reference,
+        depth_chart=depth_chart,
     )
 
     return {
