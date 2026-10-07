@@ -144,14 +144,14 @@ _ROLE_TABLE: tuple[tuple[tuple[str, ...], Phase, tuple[tuple[str, str], ...]], .
     )),
     (("ST",), Phase.IP, (
         ("DLF", "Deep-Lying Forward"),
-        ("CF", "Centre Forward"),
+        ("CFD", "Centre Forward"),
         ("TF", "Target Forward"),
         ("P", "Poacher"),
         ("CHF", "Channel Forward"),
         ("F9", "False Nine"),
     )),
     (("ST",), Phase.OOP, (
-        ("CF", "Centre Forward"),
+        ("CFD", "Centre Forward"),
         ("TCF", "Tracking Centre Forward"),
         ("OCF", "Central Outlet Centre Forward"),
         ("SCF", "Splitting Outlet Centre Forward"),

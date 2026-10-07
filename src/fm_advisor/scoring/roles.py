@@ -404,7 +404,7 @@ _DRAFT: dict[tuple[Phase, str], _Draft] = {
         "Strength, Vision, Finishing, Teamwork, Balance, Anticipation",
         "Key Passes per 90, xA/90, Chances Created per 90",
         "xG/90, Pass Completion Percentage, Goals per 90 minutes"),
-    (IP, "CF"): _d(
+    (IP, "CFD"): _d(
         "Finishing, Off The Ball, Composure, First Touch, Technique, Anticipation",
         "Dribbling, Heading, Strength, Acceleration, Passing, Decisions",
         "Goals per 90 minutes, xG/90",
@@ -429,7 +429,7 @@ _DRAFT: dict[tuple[Phase, str], _Draft] = {
         "Decisions, Flair, Finishing, Anticipation, Agility, Teamwork",
         "Key Passes per 90, Chances Created per 90, xA/90",
         "Dribbles per 90, xG/90, Pass Completion Percentage"),
-    (OOP, "CF"): _d(
+    (OOP, "CFD"): _d(
         "Work Rate, Teamwork, Anticipation, Stamina",
         "Acceleration, Aggression, Decisions, Bravery",
         "Pres C/90, Possession Won per 90", "Pres A/90, Dist/90"),
