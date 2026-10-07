@@ -20,6 +20,8 @@ from typing import Optional, Union
 import pandas as pd
 from pydantic import ValidationError
 
+from fm_advisor.role_catalogue import find_roles
+
 from .cleaning import (
     ATTR_MIN,
     clean_attribute,
@@ -265,6 +267,14 @@ def load_squad(
             players.append(player)
     if skipped:
         warnings.append(f"Skipped {skipped} row(s) that failed validation.")
+
+    for player in players:
+        where = player.best_positions or player.positions
+        if player.best_role and where and not find_roles(player.best_role, where):
+            warnings.append(
+                f"Best Role '{player.best_role}' for {player.name} is not an FM26 role "
+                f"at {', '.join(where)}."
+            )
 
     return LoadResult(
         players=players,
