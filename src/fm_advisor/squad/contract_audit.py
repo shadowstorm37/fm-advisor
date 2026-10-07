@@ -46,16 +46,17 @@ class ContractAuditResult:
 
 def audit_contracts(
     players: list[Player],
+    reference: date,
     roles: Optional[list[RoleDefinition]] = None,
     quality_threshold: float = DEFAULT_QUALITY_THRESHOLD,
     warning_months: int = DEFAULT_WARNING_MONTHS,
-    reference: Optional[date] = None,
     depth_chart: Optional[list[PositionDepth]] = None,
 ) -> ContractAuditResult:
     """
     Flag every starting-caliber player whose contract expires within
-    `warning_months`, once per player. Pass `depth_chart` to reuse one already
-    built with the same thresholds; otherwise it is built from `roles`.
+    `warning_months` of `reference` (the in-game date), once per player. Pass
+    `depth_chart` to reuse one already built with the same thresholds;
+    otherwise it is built from `roles`.
     """
     if depth_chart is None:
         depth_chart = build_depth_chart(players, roles=roles, quality_threshold=quality_threshold)

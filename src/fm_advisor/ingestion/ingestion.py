@@ -186,6 +186,7 @@ def _row_to_player(
         elif field_name == "status_raw":
             codes = [c.strip() for c in re.split(r"[,/]", str(raw)) if c.strip()]
             data["status_raw"] = str(raw).strip() or None
+            data["status_codes"] = codes
             data["status_flags"] = [STATUS_FLAG_LABELS.get(c, c) for c in codes]
         elif field_name == "transfer_value_raw":
             data["transfer_value_raw"] = str(raw).strip() or None

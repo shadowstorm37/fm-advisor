@@ -15,6 +15,9 @@ blend" fallback). Counting that 0.0 as "this player is bad at the position"
 would fabricate a judgement from an absence of data, so those players are
 tracked separately as `no_data_count` and excluded from the quality/depth
 counts that drive the status.
+
+Injured, unregistered and loaned-out players stay listed at their positions
+but do not count towards depth either: they cannot be picked.
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from fm_advisor.ingestion import Player
-from fm_advisor.role_catalogue import POSITIONS
+from fm_advisor.role_catalogue import POSITIONS, role_names
 from fm_advisor.scoring import ROLE_LIBRARY, RoleDefinition, RoleScoreResult, evaluate_role
 
 # A position score at/above this counts the player as starting-caliber there.
@@ -54,6 +57,12 @@ class PositionDepthEntry:
     score: Optional[float]   # mean of best_roles' scores; None if the player has no data at all
     tier: str                # "quality" | "backup" | "below_backup" | "no_data"
     best_roles: list[RoleFit] = field(default_factory=list)
+    available: bool = True   # False if injured, unregistered or out on loan
+    status_flags: list[str] = field(default_factory=list)
+    playing_time: Optional[str] = None
+    wage_weekly: Optional[float] = None
+    game_best_role: Optional[str] = None   # the export's Best Role code
+    game_best_role_names: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -61,9 +70,10 @@ class PositionDepth:
     """Depth assessment for a single position."""
     position: str
     status: str
-    quality_count: int
-    backup_count: int
+    quality_count: int       # available players only
+    backup_count: int        # available players only
     no_data_count: int
+    unavailable_count: int
     entries: list[PositionDepthEntry] = field(default_factory=list)
 
 
@@ -83,11 +93,22 @@ def _entry(
     backup_threshold: float,
 ) -> PositionDepthEntry:
     natural = position in player.best_positions
+    details = dict(
+        available=player.is_available(),
+        status_flags=list(player.status_flags),
+        playing_time=player.playing_time,
+        wage_weekly=player.wage_weekly,
+        game_best_role=player.best_role,
+        game_best_role_names=(
+            role_names(player.best_role, player.best_positions or player.positions)
+            if player.best_role else []
+        ),
+    )
     has_data = any(
         r.attribute_score is not None or r.stat_score is not None for _, r in results
     )
     if not has_data:
-        return PositionDepthEntry(player.name, natural, None, "no_data")
+        return PositionDepthEntry(player.name, natural, None, "no_data", **details)
 
     # Best role per phase, in the order the phases first appear.
     best: dict[Optional[str], tuple[RoleDefinition, RoleScoreResult]] = {}
@@ -102,12 +123,13 @@ def _entry(
     ]
     score = round(sum(fit.role_score for fit in best_roles) / len(best_roles), 1)
     return PositionDepthEntry(
-        player.name, natural, score, _tier(score, quality_threshold, backup_threshold), best_roles
+        player.name, natural, score, _tier(score, quality_threshold, backup_threshold), best_roles,
+        **details,
     )
 
 
-def _status_for(quality_count: int, backup_count: int, eligible_with_data: int) -> str:
-    if eligible_with_data == 0:
+def _status_for(quality_count: int, backup_count: int, players_with_data: int) -> str:
+    if players_with_data == 0:
         # Either nobody plays this position at all, or everyone who does has
         # no scoreable data yet — neither is "the players here are weak", so
         # this is surfaced distinctly rather than as a Critical Weakness.
@@ -131,6 +153,7 @@ def build_depth_chart(
     >=2 quality-tier players, "Depth Concern" with fewer than 2 quality but
     >=2 counting backup-tier too, "Critical Weakness" with fewer than 2 total,
     and "No Coverage" if nobody who can play there has any scoreable data.
+    Only available players count towards those totals.
     """
     role_list = roles if roles is not None else list(ROLE_LIBRARY.values())
 
@@ -159,8 +182,8 @@ def build_depth_chart(
         ]
         entries.sort(key=lambda e: (e.score is None, -(e.score or 0.0)))
 
-        quality_count = sum(1 for e in entries if e.tier == "quality")
-        backup_count = sum(1 for e in entries if e.tier == "backup")
+        quality_count = sum(1 for e in entries if e.tier == "quality" and e.available)
+        backup_count = sum(1 for e in entries if e.tier == "backup" and e.available)
         no_data_count = sum(1 for e in entries if e.tier == "no_data")
 
         chart.append(PositionDepth(
@@ -169,6 +192,7 @@ def build_depth_chart(
             quality_count=quality_count,
             backup_count=backup_count,
             no_data_count=no_data_count,
+            unavailable_count=sum(1 for e in entries if not e.available),
             entries=entries,
         ))
 

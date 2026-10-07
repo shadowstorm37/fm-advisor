@@ -37,11 +37,13 @@ contract, attribute and per-90 stat columns together.
 ## Usage
 
 ```python
+from datetime import date
+
 from fm_advisor.ingestion import load_squad
 from fm_advisor.squad import build_squad_report
 
 squad = load_squad("squad_export.csv")
-report = build_squad_report(squad.players)
+report = build_squad_report(squad.players, game_date=date(2026, 10, 1))  # the date in your save
 ```
 
 ## Tests

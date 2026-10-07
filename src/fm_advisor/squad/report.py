@@ -33,15 +33,16 @@ def _json_safe(value):
 
 def build_squad_report(
     players: list[Player],
+    game_date: date,
     roles: Optional[list[RoleDefinition]] = None,
     quality_threshold: float = DEFAULT_QUALITY_THRESHOLD,
     backup_threshold: float = DEFAULT_BACKUP_THRESHOLD,
     warning_months: int = DEFAULT_WARNING_MONTHS,
-    reference: Optional[date] = None,
 ) -> dict:
     """
     Build the combined Phase 2 report: squad depth by position plus contract
-    urgency flags for starting-caliber players. Returns a plain dict of
+    urgency flags for starting-caliber players, measured from `game_date`
+    (the date in the save, which no export carries). Returns a plain dict of
     JSON-safe primitives (dates become ISO strings) ready for
     `json.dumps()` or the FastAPI layer.
     """
@@ -50,13 +51,14 @@ def build_squad_report(
     )
     contract_result = audit_contracts(
         players,
+        reference=game_date,
         warning_months=warning_months,
-        reference=reference,
         depth_chart=depth_chart,
     )
 
     return {
         "squad_size": len(players),
+        "game_date": game_date.isoformat(),
         "thresholds": {
             "quality": quality_threshold,
             "backup": backup_threshold,

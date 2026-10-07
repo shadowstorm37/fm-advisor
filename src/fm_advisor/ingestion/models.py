@@ -112,9 +112,16 @@ STATUS_FLAG_LABELS: dict[str, str] = {
     "Wnt": "Wanted (transfer/wage listed)",
     "Inj": "Injured",
     "Yth": "Youth prospect",
-    "Loa": "Out on loan",
+    "Loa": "Loan listed",
     "ESC": "Release clause active",
+    "Unr": "Unregistered",
 }
+
+# "Loa" means listed for loan, not away on loan, so it does not affect
+# availability. A player who is actually out on loan is identified by their
+# Playing Time instead.
+UNAVAILABLE_STATUS_CODES = frozenset({"Inj", "Unr"})
+OUT_ON_LOAN_PLAYING_TIME = "out on loan"
 
 
 def _build_lookup(spellings: dict[str, tuple[str, ...]], include_key: bool) -> dict[str, str]:
@@ -162,7 +169,8 @@ class Player(BaseModel):
 
     # Status, value and performance output
     status_raw: Optional[str] = None
-    status_flags: list[str] = Field(default_factory=list)
+    status_codes: list[str] = Field(default_factory=list)     # e.g. ["Inj"]
+    status_flags: list[str] = Field(default_factory=list)     # e.g. ["Injured"]
     transfer_value_raw: Optional[str] = None
     transfer_value_low: Optional[float] = None
     transfer_value_high: Optional[float] = None
@@ -180,14 +188,22 @@ class Player(BaseModel):
         """Fetch a performance stat by its export column name."""
         return self.stats.get(name, default)
 
-    def months_until_contract_expiry(self, reference: Optional[date] = None) -> Optional[int]:
-        """Whole months from `reference` (default today) to contract expiry."""
+    def months_until_contract_expiry(self, reference: date) -> Optional[int]:
+        """
+        Whole months from `reference` to contract expiry. `reference` is the
+        in-game date, which no export carries, so the caller must supply it.
+        """
         if self.contract_expiry is None:
             return None
-        ref = reference or date.today()
-        return (self.contract_expiry.year - ref.year) * 12 + (
-            self.contract_expiry.month - ref.month
+        return (self.contract_expiry.year - reference.year) * 12 + (
+            self.contract_expiry.month - reference.month
         )
+
+    def is_available(self) -> bool:
+        """False if injured, unregistered or out on loan."""
+        if any(code in UNAVAILABLE_STATUS_CODES for code in self.status_codes):
+            return False
+        return (self.playing_time or "").strip().lower() != OUT_ON_LOAN_PLAYING_TIME
 
     def is_goalkeeper(self) -> bool:
         return "GK" in self.positions

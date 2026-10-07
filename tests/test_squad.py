@@ -123,6 +123,43 @@ def test_full_library_covers_every_position(squad):
             assert entry.score == pytest.approx(sum(f.role_score for f in entry.best_roles) / 2, abs=0.05)
 
 
+def test_injured_player_is_listed_but_does_not_count_towards_depth():
+    players = [
+        Player(name="Ace", **STRONG_CB),
+        Player(name="Crocked", status_codes=["Inj"], status_flags=["Injured"], **STRONG_CB),
+    ]
+    depth = _cd_depth(players)
+    assert depth.status == CRITICAL_WEAKNESS   # would be Healthy if both counted
+    assert depth.quality_count == 1
+    assert depth.unavailable_count == 1
+    crocked = next(e for e in depth.entries if e.player_name == "Crocked")
+    assert (crocked.available, crocked.tier, crocked.status_flags) == (False, "quality", ["Injured"])
+
+
+def test_loan_listed_is_available_but_out_on_loan_is_not():
+    loan_listed = Player(name="Listed", status_codes=["Loa"], playing_time="Impact Sub", **STRONG_CB)
+    loaned_out = Player(name="Away", status_codes=["Unr"], playing_time="Out On Loan", **STRONG_CB)
+    away_no_code = Player(name="Away Too", playing_time="Out On Loan", **STRONG_CB)
+    assert loan_listed.is_available()
+    assert not loaned_out.is_available()
+    assert not away_no_code.is_available()
+
+    depth = _cd_depth([loan_listed, loaned_out, away_no_code])
+    assert depth.quality_count == 1
+    assert depth.unavailable_count == 2
+
+
+def test_entries_carry_squad_details_from_the_export(squad):
+    chart = build_depth_chart(squad)
+    ross = next(e for d in chart if d.position == "DC" for e in d.entries if e.player_name == "Mathias Ross")
+    assert ross.playing_time == "Important Player"
+    assert ross.wage_weekly == 24_500.0
+    assert ross.status_flags == ["Wanted (transfer/wage listed)"]
+    assert ross.available                      # transfer-listed players can still play
+    assert ross.game_best_role == "BCB"
+    assert ross.game_best_role_names == ["Ball-Playing Centre-Back"]
+
+
 def test_contract_audit_flags_starting_caliber_player_expiring_soon():
     players = [
         Player(name="Star", contract_expiry=date(2027, 1, 1), **STRONG_CB),   # ~5 months out
@@ -153,7 +190,8 @@ def test_contract_audit_flags_a_player_once_across_positions():
 
 
 def test_loaded_squad_report_is_json_serializable(squad):
-    report = build_squad_report(squad, roles=ROLES)
+    report = build_squad_report(squad, date(2026, 10, 1), roles=ROLES)
+    assert report["game_date"] == "2026-10-01"
     assert report["squad_size"] == len(squad)
     assert [d["position"] for d in report["depth_chart"]] == ["DC"]
     assert isinstance(json.dumps(report), str)
