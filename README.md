@@ -44,6 +44,3 @@ report = build_squad_report(players)
 ```bash
 uv run pytest
 ```
-
-`test_ingest.py`, `test_scoring.py` and `test_squad.py` are still print-style
-scripts: run them directly with `PYTHONPATH=src python tests/test_x.py`.

@@ -1,80 +1,66 @@
-"""Validation harness for fm26_scoring (Task 1.3)."""
+"""Tests for fm_advisor.scoring (Task 1.3)."""
 
-from pathlib import Path
-
-from fm_advisor.ingestion import Player, load_squad, merge_squads
-from fm_advisor.scoring import ADVANCED_FORWARD_ATTACK, CENTRAL_DEFENDER_DEFEND, evaluate_role
-
-
-def check(label, got, want):
-    ok = got == want
-    print(f"  {'PASS' if ok else 'FAIL'}  {label}: {got!r}" + ("" if ok else f"  (want {want!r})"))
-    assert ok, f"{label}: got {got!r}, want {want!r}"
-
-
-print("== Unit: attribute score matches the spec's worked formula exactly ==")
-p = Player(
-    name="Test CB",
-    positions=["DC"],
-    attributes={"Tackling": 16, "Heading": 15, "Positioning": 15, "Strength": 14},
+from fm_advisor.ingestion import Player
+from fm_advisor.scoring import (
+    ADVANCED_FORWARD_ATTACK,
+    CENTRAL_DEFENDER_DEFEND,
+    compute_attribute_score,
+    evaluate_role,
 )
-# spec formula, unscaled: 16*0.3 + 15*0.3 + 15*0.2 + 14*0.2 = 4.8+4.5+3.0+2.8 = 15.1
-raw = 16 * 0.3 + 15 * 0.3 + 15 * 0.2 + 14 * 0.2
-expected_0_100 = (raw - 1) / 19 * 100
-from fm_advisor.scoring import compute_attribute_score
-check("CD-Defend attribute score", round(compute_attribute_score(p, CENTRAL_DEFENDER_DEFEND), 4),
-      round(expected_0_100, 4))
 
-
-print("\n== Unit: attribute-only player falls back cleanly (no stats) ==")
-result = evaluate_role([p], CENTRAL_DEFENDER_DEFEND)
-check("one result", len(result), 1)
-check("stat_score is None (no performance data)", result[0].stat_score, None)
-check("role_score == attribute_score when no stats", result[0].role_score, result[0].attribute_score)
-
-
-print("\n== Unit: stats-only player (no real attributes) falls back to stat score, not zero ==")
-stats_only = Player(
-    name="Stats Only CB", positions=["DC"],
-    stats={"Tackle Completion Percentage": 80.0, "Headers Won Percentage": 70.0,
-           "Interceptions per 90": 2.0, "Possession Lost per 90": 2.0},
+CB_STATS = (
+    "Tackle Completion Percentage",
+    "Headers Won Percentage",
+    "Interceptions per 90",
+    "Possession Lost per 90",
 )
-r2 = evaluate_role([stats_only], CENTRAL_DEFENDER_DEFEND)
-check("attribute_score is None, not 0.0", r2[0].attribute_score, None)
-check("role_score falls back to stat_score, isn't dragged to 0", r2[0].role_score, r2[0].stat_score)
 
 
-print("\n== Unit: stat percentiles respond to squad spread, including inverted stats ==")
-a = Player(name="A", positions=["DC"], attributes={"Tackling": 10, "Heading": 10, "Positioning": 10, "Strength": 10},
-           stats={"Tackle Completion Percentage": 90.0, "Headers Won Percentage": 80.0,
-                  "Interceptions per 90": 3.0, "Possession Lost per 90": 1.0})
-b = Player(name="B", positions=["DC"], attributes={"Tackling": 10, "Heading": 10, "Positioning": 10, "Strength": 10},
-           stats={"Tackle Completion Percentage": 50.0, "Headers Won Percentage": 40.0,
-                  "Interceptions per 90": 1.0, "Possession Lost per 90": 5.0})
-results = evaluate_role([a, b], CENTRAL_DEFENDER_DEFEND)
-check("same attributes -> stats break the tie, A wins", results[0].player.name, "A")
-check("A stat_score is high", results[0].stat_score > 90, True)
-check("B has lower Possession Lost (worse) correctly penalised", results[1].stat_score < 10, True)
+def _cb(name, attributes=None, stats=None):
+    return Player(
+        name=name,
+        positions=["DC"],
+        attributes=attributes or {},
+        stats=dict(zip(CB_STATS, stats)) if stats else {},
+    )
 
 
-print("\n== Integration: real merged squad (both uploaded files) ==")
-DATA = Path(__file__).parent.parent / "data" / "cache"
-attr_res = load_squad(DATA / "moneyball_export_20260811_093123.csv")
-perf_res = load_squad(DATA / "moneyball_export_20260811_093025.csv")
-merged, warnings = merge_squads(attr_res, perf_res)
-print(f"  merged squad size: {len(merged)}")
+TEST_CB = _cb("Test CB", {"Tackling": 16, "Heading": 15, "Positioning": 15, "Strength": 14})
+LEVEL_ATTRS = {"Tackling": 10, "Heading": 10, "Positioning": 10, "Strength": 10}
 
-cd_results = evaluate_role(merged, CENTRAL_DEFENDER_DEFEND, only_eligible=True)
-print(f"  CD-Defend eligible players: {len(cd_results)}")
-for r in cd_results[:5]:
-    blend_note = "attr-only" if r.stat_score is None else f"stat={r.stat_score}"
-    print(f"    {r.role_score:5.1f}  {r.player.name:20s} (attr={r.attribute_score}, {blend_note})")
-check("CD results sorted descending", [r.role_score for r in cd_results] == sorted([r.role_score for r in cd_results], reverse=True), True)
 
-af_results = evaluate_role(merged, ADVANCED_FORWARD_ATTACK, only_eligible=True)
-print(f"\n  AF-Attack eligible players: {len(af_results)}")
-for r in af_results[:5]:
-    blend_note = "attr-only" if r.stat_score is None else f"stat={r.stat_score}"
-    print(f"    {r.role_score:5.1f}  {r.player.name:20s} (attr={r.attribute_score}, {blend_note})")
+def test_attribute_score_matches_spec_formula():
+    # spec formula, unscaled: 16*0.3 + 15*0.3 + 15*0.2 + 14*0.2 = 15.1
+    raw = 16 * 0.3 + 15 * 0.3 + 15 * 0.2 + 14 * 0.2
+    expected_0_100 = (raw - 1) / 19 * 100
+    assert round(compute_attribute_score(TEST_CB, CENTRAL_DEFENDER_DEFEND), 4) == round(expected_0_100, 4)
 
-print("\nALL CHECKS PASSED")
+
+def test_attribute_only_player_falls_back_to_attribute_score():
+    result = evaluate_role([TEST_CB], CENTRAL_DEFENDER_DEFEND)
+    assert len(result) == 1
+    assert result[0].stat_score is None
+    assert result[0].role_score == result[0].attribute_score
+
+
+def test_stats_only_player_falls_back_to_stat_score():
+    stats_only = _cb("Stats Only CB", stats=(80.0, 70.0, 2.0, 2.0))
+    result = evaluate_role([stats_only], CENTRAL_DEFENDER_DEFEND)
+    assert result[0].attribute_score is None             # not 0.0
+    assert result[0].role_score == result[0].stat_score  # not dragged to 0
+
+
+def test_stat_percentiles_follow_squad_spread_including_inverted_stats():
+    a = _cb("A", LEVEL_ATTRS, stats=(90.0, 80.0, 3.0, 1.0))
+    b = _cb("B", LEVEL_ATTRS, stats=(50.0, 40.0, 1.0, 5.0))
+    results = evaluate_role([a, b], CENTRAL_DEFENDER_DEFEND)
+    assert results[0].player.name == "A"   # same attributes -> stats break the tie
+    assert results[0].stat_score > 90
+    assert results[1].stat_score < 10      # more possession lost is penalised
+
+
+def test_real_squad_results_sorted_descending(real_merged):
+    scores = [r.role_score for r in evaluate_role(real_merged, CENTRAL_DEFENDER_DEFEND)]
+    assert scores == sorted(scores, reverse=True)
+    # AF-Attack must also evaluate cleanly against the real squad.
+    evaluate_role(real_merged, ADVANCED_FORWARD_ATTACK)
