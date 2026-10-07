@@ -59,8 +59,8 @@ def test_stat_percentiles_follow_squad_spread_including_inverted_stats():
     assert results[1].stat_score < 10      # more possession lost is penalised
 
 
-def test_real_squad_results_sorted_descending(real_merged):
-    scores = [r.role_score for r in evaluate_role(real_merged, CENTRAL_DEFENDER_DEFEND)]
+def test_loaded_squad_results_sorted_descending(squad):
+    scores = [r.role_score for r in evaluate_role(squad, CENTRAL_DEFENDER_DEFEND)]
     assert scores == sorted(scores, reverse=True)
-    # AF-Attack must also evaluate cleanly against the real squad.
-    evaluate_role(real_merged, ADVANCED_FORWARD_ATTACK)
+    # AF-Attack must also evaluate cleanly against a loaded squad.
+    evaluate_role(squad, ADVANCED_FORWARD_ATTACK)

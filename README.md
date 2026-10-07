@@ -17,7 +17,7 @@ cp .env.example .env                          # then add GEMINI_API_KEY
 
 | Path | Purpose | State |
 |---|---|---|
-| `src/fm_advisor/ingestion` | CSV parsing, cleaning, `Player` model, export merge | Done |
+| `src/fm_advisor/ingestion` | CSV parsing, cleaning, `Player` model | Done |
 | `src/fm_advisor/scoring` | Role definitions and blended role scores | 2 roles only |
 | `src/fm_advisor/squad` | Depth chart, contract audit, JSON report | Done |
 | `src/fm_advisor/tactics` | FM26 instruction enums, `TacticalPlan` schema | Done |
@@ -27,16 +27,20 @@ cp .env.example .env                          # then add GEMINI_API_KEY
 | `src/fm_advisor/api` | FastAPI app | Stub |
 | `ui/` | Streamlit multi-page app | Stub |
 
+## Export view
+
+One CSV per squad, exported from a single custom view that carries profile,
+contract, attribute and per-90 stat columns together.
+`data/samples/combined_view_sample.csv` shows the exact columns.
+
 ## Usage
 
 ```python
-from fm_advisor.ingestion import load_squad, merge_squads
+from fm_advisor.ingestion import load_squad
 from fm_advisor.squad import build_squad_report
 
-attrs = load_squad("attributes_export.csv")
-perf = load_squad("performance_export.csv")
-players, warnings = merge_squads(attrs, perf)
-report = build_squad_report(players)
+squad = load_squad("squad_export.csv")
+report = build_squad_report(squad.players)
 ```
 
 ## Tests

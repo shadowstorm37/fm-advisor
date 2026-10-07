@@ -1,25 +1,28 @@
-"""Shared fixtures: the real BepInEx exports in data/cache."""
+"""Shared fixtures: exports in the combined single-file view."""
 
 from pathlib import Path
 
 import pytest
 
-from fm_advisor.ingestion import load_squad, merge_squads
+from fm_advisor.ingestion import load_squad
 
-DATA = Path(__file__).parent.parent / "data" / "cache"
-
-
-@pytest.fixture(scope="session")
-def real_attr_result():
-    return load_squad(DATA / "moneyball_export_20260811_093123.csv")
+ROOT = Path(__file__).parent.parent
+SAMPLE_EXPORT = ROOT / "data" / "samples" / "combined_view_sample.csv"
+FIXTURE_SQUAD = Path(__file__).parent / "_fixtures" / "squad_combined.csv"
 
 
 @pytest.fixture(scope="session")
-def real_perf_result():
-    return load_squad(DATA / "moneyball_export_20260811_093025.csv")
+def sample_result():
+    """The real one-player export that defines the view's columns."""
+    return load_squad(SAMPLE_EXPORT)
 
 
 @pytest.fixture(scope="session")
-def real_merged(real_attr_result, real_perf_result):
-    merged, _ = merge_squads(real_attr_result, real_perf_result)
-    return merged
+def squad_result():
+    """An 11-player squad in the same view (the sample row plus made-up players)."""
+    return load_squad(FIXTURE_SQUAD)
+
+
+@pytest.fixture(scope="session")
+def squad(squad_result):
+    return squad_result.players

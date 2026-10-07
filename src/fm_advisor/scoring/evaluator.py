@@ -21,7 +21,7 @@ stat_score       : each relevant performance stat is converted to a 0-100
                     something next to the rest of the squad's numbers.
 
 role_score       : blended attribute_score and stat_score per the role's
-                    `stat_blend`. A player with no merged performance data
+                    `stat_blend`. A player with no performance data
                     (attribute-only export) still gets a full score — it just
                     falls back to 100% attribute-based, so nobody is penalised
                     for missing data rather than for actually being worse.
@@ -94,7 +94,7 @@ def compute_stat_score(
     Weighted blend of the role's stat percentiles for this player.
 
     Returns None if the player has none of the role's relevant stats at all
-    (e.g. an attribute-only export with no performance data merged in), so
+    (e.g. an attribute-only export with no performance data), so
     the caller can fall back to a pure attribute score rather than guessing.
     """
     contributions: list[tuple[float, float]] = []  # (percentile, weight)
@@ -131,7 +131,7 @@ def evaluate_role(
         if only_eligible and not eligible:
             continue
 
-        # A player merged in from a stats-only export has no real ratings —
+        # A player loaded from a stats-only export has no real ratings —
         # every attribute silently defaulted to the baseline (1), which would
         # score as 0.0 and unfairly tank the blend. Treat that as "no
         # attribute data" (None) rather than "worst possible attributes."

@@ -20,7 +20,7 @@ def health() -> dict:
 
 @app.post("/squad/report")
 def squad_report() -> dict:
-    """Attribute + performance exports in, Phase 2 depth/contract report out."""
+    """Squad export in, Phase 2 depth/contract report out."""
     raise HTTPException(status_code=501, detail="Not implemented")
 
 

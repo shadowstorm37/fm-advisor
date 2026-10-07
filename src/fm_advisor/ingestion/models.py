@@ -85,11 +85,14 @@ _ATTRIBUTE_SPELLINGS: dict[str, tuple[str, ...]] = {
 # Profile fields. NOTE: aliases here are deliberately kept disjoint from the
 # attribute codes above (e.g. "nat" is Natural Fitness, so nationality only
 # accepts "nation"/"nationality"; "pos" is Positioning, so the position column
-# only accepts "position"/"positions"/"bestpos").
+# only accepts "position"/"positions").
 _PROFILE_SPELLINGS: dict[str, tuple[str, ...]] = {
     "name": ("name", "player", "playername", "fullname"),
     "age": ("age",),
-    "position_raw": ("position", "positions", "bestpos", "playablepositions"),
+    "position_raw": ("position", "positions", "playablepositions"),
+    "best_position_raw": ("bestpos", "bestposition"),
+    "best_role": ("bestrole",),
+    "playing_time": ("playingtime",),
     "club": ("club", "team", "currentclub"),
     "nationality": ("nationality", "nation", "nat1"),
     "contract_expiry_raw": (
@@ -101,9 +104,10 @@ _PROFILE_SPELLINGS: dict[str, tuple[str, ...]] = {
     "status_raw": ("inf", "info", "status"),
     "transfer_value_raw": ("transfervalue", "value", "marketvalue"),
     "minutes": ("minutes", "mins", "minutesplayed"),
+    "wage_raw": ("wage", "wages", "salary"),
 }
 
-# The "Inf" column's short codes, per the BepInEx moneyball/performance view.
+# The "Inf" column's short codes.
 STATUS_FLAG_LABELS: dict[str, str] = {
     "Wnt": "Wanted (transfer/wage listed)",
     "Inj": "Injured",
@@ -138,10 +142,16 @@ class Player(BaseModel):
 
     name: str
     age: Optional[int] = None
-    positions: list[str] = Field(default_factory=list)
+    positions: list[str] = Field(default_factory=list)        # everywhere they can play
     position_raw: Optional[str] = None
+    best_positions: list[str] = Field(default_factory=list)   # their natural spot
+    best_position_raw: Optional[str] = None
+    best_role: Optional[str] = None
+    playing_time: Optional[str] = None                        # squad status, e.g. "Regular Starter"
     contract_expiry: Optional[date] = None
     contract_expiry_raw: Optional[str] = None
+    wage_raw: Optional[str] = None
+    wage_weekly: Optional[float] = None
     club: Optional[str] = None
     nationality: Optional[str] = None
     division: Optional[str] = None
@@ -150,7 +160,7 @@ class Player(BaseModel):
     # Attribute (1-20 ability) view
     attributes: dict[str, int] = Field(default_factory=dict)
 
-    # Performance/"moneyball" view
+    # Status, value and performance output
     status_raw: Optional[str] = None
     status_flags: list[str] = Field(default_factory=list)
     transfer_value_raw: Optional[str] = None

@@ -209,12 +209,12 @@ def parse_contract_date(raw, dayfirst: bool = True) -> Optional[date]:
     return None
 
 
-# --- Performance-stats view helpers ------------------------------------------
+# --- Money and performance-stat helpers --------------------------------------
 #
-# The "moneyball" style BepInEx export (per-90 output metrics, xG, ratings)
-# uses a different set of messy formats than the attribute view: currency
-# ranges with K/M suffixes, percentages that sometimes carry a literal "%" and
-# sometimes don't, and a squad-status flag column instead of contract data.
+# Money and per-90 output columns use a different set of messy formats than
+# the 1-20 attributes: currency ranges with K/M suffixes, wages with a pay
+# period, and percentages that sometimes carry a literal "%" and sometimes
+# don't.
 
 _MONEY_UNIT_RE = re.compile(
     r"^\s*£?\s*(\d+(?:\.\d+)?)\s*([KkMm]?)\s*$"
@@ -251,6 +251,32 @@ def clean_money_range(raw) -> tuple[Optional[float], Optional[float]]:
         return (lo, hi)
     single = _money_to_float(text)
     return (single, single)
+
+
+_WAGE_PERIOD_RE = re.compile(r"\s*p/([wma])\s*$", re.IGNORECASE)
+_WEEKS_PER_PERIOD = {"w": 1.0, "m": 52 / 12, "a": 52.0}
+
+
+def clean_wage(raw) -> Optional[float]:
+    """
+    Parse an FM wage cell into a plain weekly figure (£).
+
+    "£24.5K p/w" -> 24_500.0. FM shows wages per week, month or year depending
+    on the user's preferences, so "p/m" and "p/a" are converted to weekly; a
+    cell with no period is taken as weekly.
+    """
+    if _is_null(raw):
+        return None
+    text = str(raw).strip().replace(",", "")
+    period = "w"
+    m = _WAGE_PERIOD_RE.search(text)
+    if m:
+        period = m.group(1).lower()
+        text = text[: m.start()]
+    amount = _money_to_float(text)
+    if amount is None:
+        return None
+    return amount / _WEEKS_PER_PERIOD[period]
 
 
 def clean_percentage(raw, baseline: Optional[float] = None) -> Optional[float]:

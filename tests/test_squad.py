@@ -77,8 +77,8 @@ def test_contract_audit_flags_starting_caliber_player_expiring_soon():
     assert result.unknown_contract_players == ["Mystery Star"]
 
 
-def test_real_squad_report_is_json_serializable(real_merged):
-    report = build_squad_report(real_merged, roles=ROLES)
-    assert report["squad_size"] == len(real_merged)
+def test_loaded_squad_report_is_json_serializable(squad):
+    report = build_squad_report(squad, roles=ROLES)
+    assert report["squad_size"] == len(squad)
     assert len(report["depth_chart"]) == len(ROLES)
     assert isinstance(json.dumps(report), str)

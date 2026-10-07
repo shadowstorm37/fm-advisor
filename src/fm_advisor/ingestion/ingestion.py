@@ -5,6 +5,9 @@ Reads a raw semi-colon delimited BepInEx export, auto-detecting the character
 set, resolves each column against the alias registry in `models`, cleans every
 value, and returns validated `Player` objects plus a numeric DataFrame ready for
 the Phase 1.3 role-scoring matrix.
+
+One file is one squad: the combined export view carries profile, contract,
+attributes and performance stats for every player in a single CSV.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ from .cleaning import (
     clean_attribute,
     clean_money_range,
     clean_stat,
+    clean_wage,
     parse_age,
     parse_contract_date,
     parse_positions,
@@ -168,6 +172,12 @@ def _row_to_player(
         elif field_name == "position_raw":
             data["position_raw"] = str(raw).strip() or None
             data["positions"] = parse_positions(raw)
+        elif field_name == "best_position_raw":
+            data["best_position_raw"] = str(raw).strip() or None
+            data["best_positions"] = parse_positions(raw)
+        elif field_name == "wage_raw":
+            data["wage_raw"] = str(raw).strip() or None
+            data["wage_weekly"] = clean_wage(raw)
         elif field_name == "contract_expiry_raw":
             data["contract_expiry_raw"] = str(raw).strip() or None
             data["contract_expiry"] = parse_contract_date(raw, dayfirst=dayfirst)
@@ -189,6 +199,10 @@ def _row_to_player(
 
     if not data.get("name"):
         data["name"] = f"Row {index + 1}"
+
+    # A view with only "Best Pos" still tells us one place the player can play.
+    if not data.get("positions"):
+        data["positions"] = list(data.get("best_positions", []))
 
     # Attributes (cleaned + clamped, 1-20 ability view)
     attributes: dict[str, int] = {}
@@ -284,129 +298,3 @@ def squad_to_frame(players: list[Player]) -> pd.DataFrame:
     df = pd.DataFrame.from_records(records).set_index("name")
     return df
 
-
-def _match_key(name: str) -> str:
-    """Loose join key: case/whitespace-insensitive exact name match."""
-    return re.sub(r"\s+", " ", name.strip().lower())
-
-
-def _same_club(a: Optional[str], b: Optional[str]) -> bool:
-    return bool(a) and bool(b) and normalize_header(a) == normalize_header(b)
-
-
-def _find_match(
-    attr_player: Player,
-    candidates: list[Player],
-    warnings: list[str],
-) -> Optional[Player]:
-    """
-    Resolve which of one or more same-name performance-export candidates is
-    the real match for `attr_player`, using club then age proximity to break
-    ties. Falls back to the first candidate (name-only) with a warning if the
-    tie can't be confidently broken.
-    """
-    if len(candidates) == 1:
-        return candidates[0]
-
-    club_matches = [c for c in candidates if _same_club(attr_player.club, c.club)]
-    if len(club_matches) == 1:
-        return club_matches[0]
-
-    age_matches = [
-        c
-        for c in candidates
-        if attr_player.age is not None and c.age is not None and abs(c.age - attr_player.age) <= 1
-    ]
-    if len(age_matches) == 1:
-        return age_matches[0]
-
-    attr_has_data = bool(attr_player.club) or attr_player.age is not None
-    have_disambiguating_data = attr_has_data and any(c.club or c.age is not None for c in candidates)
-    reason = (
-        "club/age didn't narrow it down"
-        if have_disambiguating_data
-        else "neither export carries club or age data to disambiguate"
-    )
-    warnings.append(
-        f"{len(candidates)} players named '{attr_player.name}' found in the performance "
-        f"export; {reason}, so the first match was used by name only — verify this pairing."
-    )
-    return candidates[0]
-
-
-def merge_squads(
-    attribute_result: LoadResult,
-    performance_result: LoadResult,
-) -> tuple[list[Player], list[str]]:
-    """
-    Combine an attribute-view export (ratings) with a performance-stats export
-    (per-90 output, xG, ratings) into unified `Player` records, joined by name.
-    When multiple players on the performance side share a name, club (then
-    age proximity) is used to pick the right one before falling back to a
-    name-only match.
-
-    Attribute-view fields (attributes, contract, positions) take precedence for
-    profile data since that export is usually the more complete squad view;
-    the performance export contributes `.stats`, `.status_flags`,
-    `.transfer_value_low/high`, `.minutes`, and fills any profile gaps
-    (e.g. Division, Based In, positions) the attribute export didn't carry.
-
-    Returns (merged_players, warnings). Players present in only one file are
-    still included with the other side's fields left empty, and a warning is
-    raised so nothing silently vanishes from either export.
-    """
-    warnings: list[str] = []
-    perf_by_key: dict[str, list[Player]] = {}
-    for p in performance_result.players:
-        perf_by_key.setdefault(_match_key(p.name), []).append(p)
-
-    matched_ids: set[int] = set()
-    merged: list[Player] = []
-
-    for attr_player in attribute_result.players:
-        key = _match_key(attr_player.name)
-        candidates = [p for p in perf_by_key.get(key, []) if id(p) not in matched_ids]
-        if not candidates:
-            merged.append(attr_player)
-            continue
-
-        perf_player = _find_match(attr_player, candidates, warnings)
-        matched_ids.add(id(perf_player))
-
-        combined = attr_player.model_copy(deep=True)
-        combined.stats = dict(perf_player.stats)
-        combined.status_raw = perf_player.status_raw
-        combined.status_flags = list(perf_player.status_flags)
-        combined.transfer_value_raw = perf_player.transfer_value_raw
-        combined.transfer_value_low = perf_player.transfer_value_low
-        combined.transfer_value_high = perf_player.transfer_value_high
-        combined.minutes = perf_player.minutes
-        combined.division = combined.division or perf_player.division
-        combined.based_in = combined.based_in or perf_player.based_in
-        combined.positions = combined.positions or perf_player.positions
-        combined.position_raw = combined.position_raw or perf_player.position_raw
-        # Merge extras from both sides (attribute-export extras win on clash).
-        combined.extra = {**perf_player.extra, **attr_player.extra}
-        merged.append(combined)
-
-    unmatched_perf = [p for plist in perf_by_key.values() for p in plist if id(p) not in matched_ids]
-    merged.extend(unmatched_perf)
-
-    if unmatched_perf:
-        names = ", ".join(p.name for p in unmatched_perf[:10])
-        more = "" if len(unmatched_perf) <= 10 else f" (+{len(unmatched_perf) - 10} more)"
-        warnings.append(
-            f"{len(unmatched_perf)} player(s) in the performance export had no name "
-            f"match in the attribute export (stats-only, no ratings): {names}{more}"
-        )
-
-    attr_only = [p for p in attribute_result.players if _match_key(p.name) not in perf_by_key]
-    if attr_only:
-        names = ", ".join(p.name for p in attr_only[:10])
-        more = "" if len(attr_only) <= 10 else f" (+{len(attr_only) - 10} more)"
-        warnings.append(
-            f"{len(attr_only)} player(s) in the attribute export had no name match "
-            f"in the performance export (ratings-only, no output stats): {names}{more}"
-        )
-
-    return merged, warnings

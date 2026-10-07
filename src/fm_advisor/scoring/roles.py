@@ -2,7 +2,7 @@
 Role definitions for the Task 1.3 matrix evaluator.
 
 Each RoleDefinition pairs the attribute weights spec'd in the project prompt
-with a small set of *relevant* performance stats from the moneyball export,
+with a small set of *relevant* performance stats from the combined export,
 so a role score can be blended: rated ability (what a player is capable of)
 adjusted by observed output (what they've actually done on the pitch).
 

@@ -13,6 +13,7 @@ from .cleaning import (
     clean_number,
     clean_percentage,
     clean_stat,
+    clean_wage,
     parse_age,
     parse_contract_date,
     parse_positions,
@@ -21,7 +22,6 @@ from .ingestion import (
     ColumnMap,
     LoadResult,
     load_squad,
-    merge_squads,
     read_raw_frame,
     resolve_columns,
     squad_to_frame,
@@ -30,7 +30,6 @@ from .models import ATTRIBUTE_NAMES, STATUS_FLAG_LABELS, Player, normalize_heade
 
 __all__ = [
     "load_squad",
-    "merge_squads",
     "LoadResult",
     "ColumnMap",
     "read_raw_frame",
@@ -45,6 +44,7 @@ __all__ = [
     "clean_percentage",
     "clean_money_range",
     "clean_stat",
+    "clean_wage",
     "parse_age",
     "parse_positions",
     "parse_contract_date",
