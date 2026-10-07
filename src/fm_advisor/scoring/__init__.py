@@ -1,8 +1,9 @@
 """
-fm26_scoring - Task 1.3 mathematical matrix evaluator.
+scoring - Task 1.3 mathematical matrix evaluator.
 
 Public API:
-    ROLE_LIBRARY        -> available RoleDefinitions, keyed by role.key
+    ROLE_LIBRARY        -> every FM26 role as a RoleDefinition, keyed by role.key
+    roles_at(position)  -> the library roles available at a position
     evaluate_role(...)   -> ranked RoleScoreResult list for a squad + role
     role_results_to_frame(...) -> flatten results into a DataFrame
 """
@@ -15,19 +16,19 @@ from .evaluator import (
     role_results_to_frame,
 )
 from .roles import (
-    ADVANCED_FORWARD_ATTACK,
-    CENTRAL_DEFENDER_DEFEND,
     ROLE_LIBRARY,
     RoleDefinition,
     StatWeight,
+    role_key,
+    roles_at,
 )
 
 __all__ = [
     "ROLE_LIBRARY",
     "RoleDefinition",
     "StatWeight",
-    "CENTRAL_DEFENDER_DEFEND",
-    "ADVANCED_FORWARD_ATTACK",
+    "role_key",
+    "roles_at",
     "RoleScoreResult",
     "evaluate_role",
     "compute_attribute_score",

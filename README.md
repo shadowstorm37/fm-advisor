@@ -18,7 +18,8 @@ cp .env.example .env                          # then add GEMINI_API_KEY
 | Path | Purpose | State |
 |---|---|---|
 | `src/fm_advisor/ingestion` | CSV parsing, cleaning, `Player` model | Done |
-| `src/fm_advisor/scoring` | Role definitions and blended role scores | 2 roles only |
+| `src/fm_advisor/role_catalogue.py` | Every FM26 role code, by position and phase | Done |
+| `src/fm_advisor/scoring` | Role definitions and blended role scores | 72 roles, draft weights |
 | `src/fm_advisor/squad` | Depth chart, contract audit, JSON report | Done |
 | `src/fm_advisor/tactics` | FM26 instruction enums, `TacticalPlan` schema | Done |
 | `src/fm_advisor/matchup` | Own vs. opposition contrast engine | Stub |

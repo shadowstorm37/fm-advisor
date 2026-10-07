@@ -4,7 +4,6 @@ import json
 from datetime import date
 
 from fm_advisor.ingestion import Player
-from fm_advisor.scoring import CENTRAL_DEFENDER_DEFEND
 from fm_advisor.squad import (
     audit_contracts,
     build_depth_chart,
@@ -17,7 +16,9 @@ from fm_advisor.squad.depth_chart import (
     NO_COVERAGE,
 )
 
-ROLES = [CENTRAL_DEFENDER_DEFEND]
+from helpers import TEST_CD_ROLE
+
+ROLES = [TEST_CD_ROLE]
 
 STRONG_CB = dict(positions=["DC"], attributes={"Tackling": 18, "Heading": 17, "Positioning": 16, "Strength": 16})
 WEAK_CB = dict(positions=["DC"], attributes={"Tackling": 6, "Heading": 5, "Positioning": 6, "Strength": 7})
